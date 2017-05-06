@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WebRTC p2p data</title>
+
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/3.6.9/firebase.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.5/handlebars.min.js"></script>
+  <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+  <script
+  src="https://code.jquery.com/jquery-1.12.4.min.js"
+  integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="
+  crossorigin="anonymous">
+  </script>
+
+  <script
+  src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+  integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+  crossorigin="anonymous">
+  </script>
+
+  <script>
+  // Initialize Firebase
+  var config = {
+    apiKey: "AIzaSyCBzvfzhyXImjy4COCGzJb3B8BFtCh6id4",
+    authDomain: "musicu-d4bc8.firebaseapp.com",
+    databaseURL: "https://musicu-d4bc8.firebaseio.com",
+    storageBucket: "musicu-d4bc8.appspot.com",
+    messagingSenderId: "491185288250"
+  };
+  firebase.initializeApp(config);
+  </script>
+
+  <script src="https://cdn.firebase.com/libs/firebaseui/1.0.0/firebaseui.js"></script>
+  <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/1.0.0/firebaseui.css" />
+  <script type="text/javascript">
+  // Global database variables
+  var currentUser, currentUserInfo, pathToUserSongs, pathToUser, pathToSongData, pathToSongInfo, midisystem;
+
+  // FirebaseUI config.
+  var uiConfig = {
+    signInSuccessUrl: 'index.html',
+    signInOptions: [
+      // Leave the lines as is for the providers you want to offer your users.
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      firebase.auth.FacebookAuthProvider.PROVIDER_ID,
+      firebase.auth.TwitterAuthProvider.PROVIDER_ID,
+      firebase.auth.GithubAuthProvider.PROVIDER_ID,
+      firebase.auth.EmailAuthProvider.PROVIDER_ID
+    ],
+    // Terms of service url.
+    tosUrl: '<your-tos-url>'
+  };
+  // Initialize the FirebaseUI Widget using Firebase.
+  var ui = new firebaseui.auth.AuthUI(firebase.auth());
+  // The start method will wait until the DOM is loaded.
+  ui.start('#login', uiConfig);
+  firebase.auth().onAuthStateChanged(function(user) {
+    if (user) {
+      currentUser = user.uid;
+      console.log('currentUser:' + currentUser);
+      pathToUser = 'users/' + currentUser;
+      pathToUserSongs = pathToUser + '/songs';
+      pathToSongData = 'songData';
+      pathToSongInfo = 'songInfo';
+      //listUserSongs(pathToUserSongs);
+      var displayName = user.displayName;
+      var email = user.email
+      var update = {};
+      update["name"] = displayName;
+      update["nick"] = displayName;
+      update["email"] = email;
+      firebase.database().ref(pathToUser).update(update);
+    }
+  });
+  </script>
+
+  <script>
+  var user = firebase.auth().currentUser;
+  if (user) {
+    // User is signed in.
+    currentUser = user.uid;
+    console.log('currentUser:' + currentUser);
+    pathToUser = 'users/' + currentUser;
+    pathToUserSongs = pathToUser + '/songs';
+    pathToSongData = 'songData';
+    pathToSongInfo = 'songInfo';
+  } else {
+    // No user is signed in.
+  }
+  </script>
+
+  <script src="../js/recorderobject.js"></script>
+  <script src="../js/userLibrary.js"></script>
+  <script src="../js/bootbox.min.js"></script>
+  <script src="../js/validator.min.js"></script>
+  <script src="../js/MIDISystem.js"></script>
+  <script src="../js/userHandling.js"></script>
+  <script src="../js/SpEvent.js"></script>
+  <script src="../js/signaling-functions.js"></script>
+  <script src="../js/User.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/dialog-polyfill.js"></script>
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+  <link rel="stylesheet" type="text/css" href="dialog-polyfill.css" />
+
+
+</head>
+<body>
+  <!-- Navbar -->
+  <!-- <nav class="navbar navbar-default">
+  <div class="container-fluid" id="navbar">
+  <div class="navbar-header">
+  <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+  <span class="icon-bar"></span>
+  <span class="icon-bar"></span>
+  <span class="icon-bar"></span>
+</button>
+<a href="#" class="navbar-brand"><strong>Video & MIDI Chat</strong></a>
+</div>
+<div class="collapse navbar-collapse" id="myNavbar">
+<ul class="nav navbar-nav navbar-right">
+<li class="dropdown">
+<a href="#" class="dropdown-toggle" id="midi-menu" data-toggle="dropdown">
+<strong>MIDI</strong>
+<span class="glyphicon glyphicon-chevron-down"></span>
+</a>
+<ul class="dropdown-menu">
+<li class="dropdown-header">MIDI In</li>
+<li><a href="#" id="midiin">Not connected</a></li>
+<li class="dropdown-header">MIDI Out</li>
+<li><a href="#" id="midiout">Not connected</a></li>
+</ul>
+</li>
+<li class="dropdown" id="user-menu">
+</li>
+<li><a href="#" id="logoutbutton2" onclick="logMeOut()">Log out</a></li>
+</ul>
+</div>
+</div>
+</nav> -->
+
+<!-- <div class="container"> -->
+
+<!-- Login view -->
+<div id="login">
+  <h1 align="center">MusicU Login</h1>
+</div>
+
+<!-- Landing Page -->
+<div id="landing">
+  <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header mdl-layout--fixed-tabs">
+    <header class="mdl-layout__header">
+      <div class="mdl-layout__header-row">
+        <!-- Title -->
+        <span class="mdl-layout-title">MusicU</span>
+      </div>
+      <!-- Tabs -->
+      <div class="mdl-layout__tab-bar mdl-js-ripple-effect" id="tab-id">
+        <a href="#fixed-tab-1" class="mdl-layout__tab" id=tab1>Chat</a>
+        <a href="#fixed-tab-2" class="mdl-layout__tab is-active" id=tab2>Record</a>
+        <a href="#fixed-tab-3" class="mdl-layout__tab" id=tab3>Share</a>
+      </div>
+    </header>
+
+    <div class="mdl-layout__drawer">
+      <span class="mdl-layout-title">Layout drawer</span>
+      <nav class="mdl-navigation">
+        <a class="mdl-navigation__link" href="">My Account</a>
+        <a href="#" id="mainlink" class="mdl-navigation__link">MIDI</a>
+        <!-- sub menu  -->
+        <nav id="submenu" class="mdl-navigation">
+          <a class="mdl-navigation__link">MIDI info 1</a>
+          <a class="mdl-navigation__link">MIDI info 2</a>
+        </nav>
+        <a class="mdl-navigation__link" href="#" id="logoutbutton" onclick="logMeOut()">Sign out</a>
+      </nav>
+    </div>
+
+    <main class="mdl-layout__content">
+      <section class="mdl-layout__tab-panel" id="fixed-tab-1">
+        <div class="page-content">
+          <div class="mdl-grid mdl-grid--no-spacing">
+            <div class="mdl-cell mdl-cell--6-col">
+            <style>
+            .demo-card-square.mdl-card {
+              width: 100%;
+              height: 100%;
+            }
+            </style>
+            <div class="demo-card-square mdl-card mdl-shadow--2dp">
+              <div class="mdl-card__supporting-text">
+                <video id="remoteVideo" width="100%" autoplay controls muted></video>
+                <div class="mdl-card__actions mdl-card--border">
+                  <video id="localVideo" class="localVideo" width="20%" autoplay muted controls></video><br />
+                  <style>
+                  .demo-card-square.mdl-card {
+                    width: 100%;
+                    height: 100%;
+                  }
+                  </style>
+                  <div class="demo-card-square mdl-card mdl-shadow--2dp">
+                    <div class="mdl-card__supporting-text">
+                      <video id="remoteVideo" width="100%" autoplay controls muted></video>
+                      <div class="mdl-card__actions mdl-card--border">
+                        <video id="localVideo" class="localVideo" width="20%" autoplay muted></video><br />
+                        <button id="hangUp"
+                        class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent"
+                        onclick="hangUp()">Hang up
+                      </button>
+                      <button id = "demo-menu-lower-right" class="mdl-button mdl-js-button mdl-button-icon">
+                        <i class ="material-icons">account_box</i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mdl-cell mdl-cell--6-col">
+              <style>
+              .demo-card-square.mdl-card {
+                width: 100%;
+                height: 100%;
+              }
+              </style>
+              <div class="demo-card-square mdl-card mdl-shadow--2dp">
+                <div class="mdl-card__title mdl-card--expand">
+                </div>
+                <div class="mdl-card__supporting-text">
+                  <div class="text-info" id="chatlog" style="overflow:auto;">
+                  </div>
+                </div>
+                <div class="mdl-card__actions mdl-card--border">
+                  <form class="form-inline" onSubmit="sendMessage();return false;" action="">
+                    <div class="form-group">
+                      <div class="mdl-textfield mdl-js-textfield">
+                        <input class="mdl-textfield__input" type="text" id="messageTextBox">
+                        <label class="mdl-textfield__label" for="sample1">Type your message here</label>
+                      </div>
+                      <button type ="submit" class="mdl-button mdl-js-button mdl-button-icon mdl-js-ripple-effect" id="sendMessageBtn">
+                        <i class="material-icons">send</i>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mdl-layout__tab-panel" id="fixed-tab-2">
+        <div class="page-content">
+          <!-- Your content goes here -->
+          <div class="container">
+            <div class="page-header"><h1>Recording</h1></div>
+      			<div class="recorder" id="recorder1">
+              <p>
+                <div class="checkbox">
+                  <label>
+                    <input type="checkbox" id="midi-switch" onclick="toggleMidi(this)"> Use MIDI
+                  </label>
+                </div>
+              </p>
+      				<p>
+      					<div class="checkbox">
+      						<label>
+      							<input type="checkbox" id="camera-switch" onclick="toggleCamera(this)"> Use camera
+      						</label>
+      					</div>
+      				</p>
+      				<p>
+      					<div>
+      						<button class="btn btn-danger" type="button" id="record">Rec</button>
+      						<button class="btn btn-success" type="button" id="play">Play</button>
+      						<button class="btn btn-default" type="button" id="pause">Pause</button>
+                  <button class="btn btn-default" type="button" id="store">Store</button>
+      					</div>
+      				</p>
+              <dialog class="mdl-dialog">
+                <h4 class="mdl-dialog__title">Song Info</h4>
+                <div class="mdl-dialog__content">
+                  <p>
+                    Please enter a song title.
+                  </p>
+                  <form action="#">
+                    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                      <input class="mdl-textfield__input" type="text" id="songTitle">
+                      <label class="mdl-textfield__label" for="songTitle">Title...</label>
+                    </div>
+                  </form>
+                </div>
+                <div class="mdl-dialog__actions">
+                  <button type="button" class="mdl-button close">Save</button>
+                </div>
+              </dialog>
+      				<!-- <p id="current-state">Idle</p> -->
+      			</div>
+      				<!-- p>
+      				 <div class="text-center">
+      					 <button id="encode" class="btn btn-default disabled">Download</button>
+      					 <p id="current-state">Idle</p>
+      				 </div>
+      				</p -->
+
+      		  <video id="gum" muted autoplay></video>
+      			<video id="recorded"></video>
+		        </div>
+            <div class="recorder" id="recorder2">
+              <button class="btn btn-success" type="button" id="playLoaded">Play</button>
+              <button class="btn btn-default" type="button" id="pauseLoaded">Pause</button>
+              <button class="btn btn-default" type="button" id="load">Load</button>
+            </div>
+            <div>
+              <!-- Left aligned menu on top of button  -->
+                <button id="songListButton"
+                        class="mdl-button mdl-js-button mdl-button--icon">
+                  <!-- <i class="material-icons">more_vert</i> -->
+                </button>
+                Pick a Song...
+                <ul class="mdl-menu mdl-menu--top-left mdl-js-menu mdl-js-ripple-effect"
+                    data-mdl-for="songListButton" id="songList">
+                  <li class="mdl-menu__item">Some Action</li>
+                  <li class="mdl-menu__item">Another Action</li>
+                  <li class="mdl-menu__item">Disabled Action</li>
+                  <li class="mdl-menu__item">Yet Another Action</li>
+                </ul>
+            </div>
+            <div>
+              <video id="loaded" muted autoplay></video>
+            </div>
+            <script>
+            // Get user's songs
+            console.log("pathToUserSongs: " + pathToUserSongs);
+            document.onload = getUserSongs();
+            // Some globals
+            var gumVideo = document.querySelector('video#gum');
+            var recordedVideo = document.querySelector('video#recorded');
+            var loadedVideo = document.querySelector('video#loaded');
+            var useVideo = false;
+            //initialize midi
+            var toggleMidi = function(checkboxtarget) {
+              if(checkboxtarget.checked) {
+                init = function() {
+                  // start midi system
+                  navigator.requestMIDIAccess && navigator.requestMIDIAccess()
+                  .then(
+                    function success(midiAccess) {
+                      // Initialize MIDI system
+                      midisystem = new MidiSystem(midiAccess);
+                      midisystem.init();
+                      var model = new recorderModel();
+                        model.canStore = true;
+                      var model2 = new recorderModel();
+                      var viewcontroller = new recorderViewController(model, $("#recorder1"));
+                      var viewcontroller2 = new recorderViewController(model2, $("#recorder2"));
+                    })
+                  .catch(function failure (e) {// Failed accessing MIDI
+                      console.log("Error initializing MIDI!", e);
+                      alert("Can't access the MIDI system. Try using the latest version of Chrome. This app will not work on iPad or iPhone.");
+                      // @TODO Warn user that MIDI is not available. Stop app?
+                  });
+                }
+                $(document).ready(init);
+              }
+            }
+            /*
+            // Init app
+            init = function() {
+            	// start midi system
+            	navigator.requestMIDIAccess && navigator.requestMIDIAccess()
+            	.then(
+            		function success(midiAccess) {
+            			// Initialize MIDI system
+            			midisystem = new MidiSystem(midiAccess);
+            			midisystem.init();
+            			var model = new recorderModel();
+            			var viewcontroller = new recorderViewController(model, $("#recorder1"));
+            		})
+            	.catch(function failure (e) {// Failed accessing MIDI
+            			console.log("Error initializing MIDI!", e);
+            			alert("Can't access the MIDI system. Try using the latest version of Chrome. This app will not work on iPad or iPhone.");
+            			// @TODO Warn user that MIDI is not available. Stop app?
+            	});
+            }
+
+            $(document).ready(init);
+            */
+            </script>
+        </div>
+      </section>
+      <section class="mdl-layout__tab-panel is-active" id="fixed-tab-3">
+        <div class="page-content"><!-- Your content goes here --></div>
+      </section>
+    </main>
+  </div>
+        <!-- List of online users -->
+        <!--
+        <div class="mdl-cell mdl-cell-12-col">
+          <fieldset class="well">
+            <p class="head muted">
+              Online users:
+            </p>
+            <div class="text-info" id="userlist" style="height: 250px; overflow:auto">
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="mdl-layout__tab-panel" id="fixed-tab-2">
+    <div class="page-content">-->
+      <!-- Your content goes here -->
+<!--
+    </div>
+  </section>
+  <section class="mdl-layout__tab-panel is-active" id="fixed-tab-3">
+    <div class="page-content">--><!-- Your content goes here --><!--</div>
+  </section>
+</main>-->
+</div>
+</div>
+-->
+<!-- Streaming View -->
+<!-- <div id="main">
+<div class="row">
+<div class="col-sm-6">
+<video id="remoteVideo" width="100%" autoplay controls muted></video>
+</div>
+<div class="col-sm-6">
+<video id="localVideo" class="localVideo" width="200" autoplay muted controls></video><br />
+<button type="button" id="hangUp" class="btn btn-sm btn-danger" onclick="hangUp()">Hang up</button>
+</div>
+</div>
+<div class="row">
+<div class="col-sm-6">
+<fieldset class="well">
+<p class="head muted">
+Chat window (active only if connected to a peer).
+</p>
+<div class="text-info" id="chatlog" style="height:250px; overflow:auto;">
+</div>
+</fieldset>
+<form class="form-inline" onSubmit="sendMessage();return false;" action="">
+<div class="form-group">
+<input type="text" class="form-control" id="messageTextBox" placeholder="Type your message here">
+<button type="submit" class="btn btn-default" id="sendMessageBtn" class="btn">Send message</button>
+</div>
+</form>
+</div> -->
+
+<!-- List of online users -->
+<!-- <div class="col-sm-6">
+<fieldset class="well">
+<p class="head muted">
+Online users.
+</p>
+<div class="text-info" id="userlist" style="height: 250px; overflow:auto">
+</div>
+</fieldset>
+</div>
+</div>
+</div> -->
+
+<!-- </div> -->
+
+
+<!-- <script>
+$(document).ready(function() {
+$("#mainlink").click(function() {
+$('#submenu').toggle('show');
+});
+});
+window.onload = function(e){
+$('#submenu').toggle('show');
+$("#landing").hide();
+};
+</script> -->
+
+<!--- Modals   -->
+
+<dialog class="mdl-dialog">
+  <div class="mdl-dialog__content">
+    <p>
+      You have a call from a peer!
+    </p>
+  </div>
+  <div class="mdl-dialog__actions mdl-dialog__actions--full-width">
+    <button type="button" class="mdl-button" id=accept-button>Accept</button>
+    <button type="button" class="mdl-button" id=decline-button>Decline</button>
+  </div>
+</dialog>
+
+<div id="modals"></div>
+
+
+</body>
+</html>
